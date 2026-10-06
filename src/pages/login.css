@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap');
+
+.login-page {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: #050a14; position: relative; overflow: hidden; font-family: 'Inter', sans-serif;
+}
+
+.login-bg-orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.2; pointer-events: none; }
+.orb-a { width: 500px; height: 500px; background: #3b82f6; top: -150px; left: -150px; animation: orbFloat 7s ease-in-out infinite alternate; }
+.orb-b { width: 350px; height: 350px; background: #8b5cf6; bottom: -100px; right: -100px; animation: orbFloat 9s ease-in-out 2s infinite alternate; }
+@keyframes orbFloat { from { transform: translate(0,0); } to { transform: translate(20px,15px); } }
+
+.back-btn {
+  position: fixed; top: 24px; left: 24px; z-index: 10;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: #64748b; padding: 8px 16px; border-radius: 100px; cursor: pointer; font-size: 13px;
+  transition: all 0.3s;
+}
+.back-btn:hover { color: white; border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); }
+
+.toast {
+  position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+  padding: 12px 24px; border-radius: 100px; font-size: 14px; z-index: 200;
+  animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.toast-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; }
+.toast-success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #86efac; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+.login-card {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px; padding: 40px; width: 380px; max-width: 90vw;
+  backdrop-filter: blur(20px);
+  opacity: 0; transform: translateY(30px) scale(0.97);
+  transition: all 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.login-card.card-visible { opacity: 1; transform: translateY(0) scale(1); }
+
+.login-logo { display: flex; align-items: center; gap: 10px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; margin-bottom: 28px; }
+.login-logo-icon { font-size: 22px; color: #3b82f6; }
+
+.login-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: white; margin-bottom: 6px; }
+.login-sub { font-size: 14px; color: #475569; margin-bottom: 28px; }
+
+.role-toggle { display: flex; gap: 8px; margin-bottom: 24px; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 4px; }
+.role-btn {
+  flex: 1; padding: 9px; border-radius: 9px; border: none; cursor: pointer;
+  font-size: 14px; font-weight: 500; transition: all 0.3s;
+  background: transparent; color: #475569;
+}
+.role-btn.role-active { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+.role-btn:hover:not(.role-active) { color: #94a3b8; background: rgba(255,255,255,0.04); }
+
+.field-group { margin-bottom: 16px; }
+.field-group label { display: block; font-size: 12px; color: #475569; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+.login-input {
+  width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04); color: white; font-size: 15px; font-family: 'Inter', sans-serif;
+  transition: all 0.3s; outline: none;
+}
+.login-input:focus { border-color: rgba(59,130,246,0.5); background: rgba(59,130,246,0.05); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.login-input::placeholder { color: #334155; }
+
+.login-btn {
+  width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white; font-size: 15px; font-weight: 600; margin-top: 8px;
+  transition: all 0.3s; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; min-height: 46px;
+}
+.login-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59,130,246,0.4); }
+.login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-loading { pointer-events: none; }
+
+.spinner {
+  width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.mode-switch { margin-top: 20px; text-align: center; font-size: 14px; color: #475569; }
+.switch-btn { background: none; border: none; color: #60a5fa; cursor: pointer; font-size: 14px; font-weight: 600; }
+.switch-btn:hover { color: #93c5fd; text-decoration: underline; }
+
+/* Enhanced 4-role toggle grid */
+.role-toggle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  padding: 6px;
+}
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.forgot-link-btn {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+.forgot-link-btn:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.back-to-login-btn {
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.back-to-login-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.token-display-box {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px dashed rgba(59, 130, 246, 0.4);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  color: #93c5fd;
+  font-size: 13px;
+  text-align: center;
+}
+.token-code {
+  font-size: 18px;
+  letter-spacing: 3px;
+  font-family: monospace;
+  color: #fbbf24;
+}
+

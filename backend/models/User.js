@@ -36,7 +36,7 @@ const UserSchema = new mongoose.Schema({
   },
   designation: {
     type: String,
-    default: "Assistant Professor"
+    default: ""
   },
   rollNumber: {
     type: String,
@@ -44,11 +44,11 @@ const UserSchema = new mongoose.Schema({
   },
   course: {
     type: String,
-    default: "B.Tech"
+    default: ""
   },
   semester: {
     type: String,
-    default: "Semester 1"
+    default: ""
   },
   status: {
     type: String,

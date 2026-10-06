@@ -7,11 +7,6 @@ const User = require("./models/User");
 const University = require("./models/University");
 require("dotenv").config();
 require("dotenv").config();
-
-console.log("ENV TEST");
-console.log("HOST:", process.env.SMTP_HOST);
-console.log("USER:", process.env.SMTP_USER);
-console.log("PASS:", process.env.SMTP_PASS ? "LOADED" : "MISSING");
 const app = express();
 
 app.use(cors());

@@ -128,7 +128,7 @@ export default function UniversityHeadDashboard() {
         getAuthHeaders()
       );
 
-      showToast("Teacher added successfully!");
+      showToast("Teacher added! Credentials have been sent to their email.");
       setShowAddTeacherModal(false);
       resetTeacherForm();
       fetchData();

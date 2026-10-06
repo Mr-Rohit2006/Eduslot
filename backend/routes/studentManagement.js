@@ -5,7 +5,7 @@ const University = require("../models/University");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { authMiddleware, authorizeRoles } = require("../middleware/authMiddleware");
-const { sendStudentCredentials } = require("../utils/emailService");
+const { sendAccountCredentials } = require("../utils/emailService");
 
 // GET students (scoped to University Administrator's university)
 router.get("/", authMiddleware, authorizeRoles("university_head", "admin"), async (req, res) => {
@@ -77,10 +77,11 @@ router.post("/", authMiddleware, authorizeRoles("university_head"), async (req, 
     await student.save();
 
     // Send credentials via email to the student
-    await sendStudentCredentials({
+    await sendAccountCredentials({
       email: student.email,
       tempPassword: tempPassword,
       name: student.name,
+      role: "student",
       universityName: university?.name || "EduSlot Smart Class"
     });
 

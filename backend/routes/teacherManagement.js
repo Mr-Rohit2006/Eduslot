@@ -3,7 +3,7 @@ const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const { authMiddleware, authorizeRoles } = require("../middleware/authMiddleware");
-
+const { sendAccountCredentials } = require("../utils/emailService");
 // GET teachers (department-wise, scoped to University Administrator's university)
 router.get("/", authMiddleware, authorizeRoles("university_head", "admin"), async (req, res) => {
   try {
@@ -69,7 +69,18 @@ router.post("/", authMiddleware, authorizeRoles("university_head"), async (req, 
     await teacher.save();
     const populatedTeacher = await User.findById(teacher._id).select("-password").populate("universityId");
 
-    res.status(201).json({ message: "Teacher created and assigned to department successfully!", teacher: populatedTeacher });
+    const university = await require("../models/University").findById(targetUnivId);
+
+    // Send credentials via email to the teacher
+    await sendAccountCredentials({
+      email: teacher.email,
+      tempPassword: password, // Send the original password passed in req.body
+      name: teacher.name,
+      role: "teacher",
+      universityName: university?.name || "EduSlot Smart Class"
+    });
+
+    res.status(201).json({ message: "Teacher created and credentials sent to email successfully!", teacher: populatedTeacher });
   } catch (error) {
     res.status(500).json({ message: "Error adding teacher", error: error.message });
   }

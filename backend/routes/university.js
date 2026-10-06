@@ -4,7 +4,7 @@ const University = require("../models/University");
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const { authMiddleware, authorizeRoles } = require("../middleware/authMiddleware");
-
+const { sendAccountCredentials } = require("../utils/emailService");
 // GET all universities (Admin, University Administrator, Teacher, Student)
 router.get("/", authMiddleware, async (req, res) => {
   try {
@@ -85,6 +85,15 @@ router.post("/", authMiddleware, authorizeRoles("admin"), async (req, res) => {
     university.adminHeadId = univHead._id;
     await university.save();
 
+
+    // Send credentials via email to the University Administrator
+    await sendAccountCredentials({
+      email: univHead.email,
+      tempPassword: headPassword,
+      name: univHead.name,
+      role: "university_head",
+      universityName: university.name
+    });
     res.status(201).json({
       message: "University and University Administrator created successfully!",
       university,

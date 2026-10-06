@@ -5,7 +5,7 @@ const User = require("../models/User");
 const Seat = require("../models/Seat");
 const Notification = require("../models/Notification");
 const { authMiddleware, authorizeRoles } = require("../middleware/authMiddleware");
-
+const { sendClassAssignmentEmail } = require("../utils/emailService");
 // GET classes (scoped by role and university)
 router.get("/", authMiddleware, async (req, res) => {
   try {
@@ -142,6 +142,45 @@ router.post("/", authMiddleware, authorizeRoles("university_head"), async (req, 
       message: "Class scheduled successfully by University Administrator!",
       classSession: populatedSession
     });
+    // Send class assignment email to teacher
+    await sendClassAssignmentEmail({
+      email: teacher.email,
+      name: teacher.name || teacher.email,
+      role: "teacher",
+      universityName: req.user.universityName || "EduSlot University",
+      departmentName: department,
+      classTitle: title,
+      subjectName: subjectCode || course || "Class",
+      teacherName: teacher.name || teacher.email,
+      classDate: date || new Date().toISOString().split("T")[0],
+      startTime,
+      endTime
+    });
+    // Send class notification to all students of the department
+    const students = await User.find({
+      role: "student",
+      universityId: targetUnivId,
+      department: department
+    });
+
+    console.log(`📧 Sending class notification to ${students.length} students`);
+
+    for (const student of students) {
+      await sendClassAssignmentEmail({
+        email: student.email,
+        name: student.name || student.email,
+        role: "student",
+        departmentName: department,
+        classTitle: title,
+        subjectName: subjectCode || course || "Class",
+        teacherName: teacher.name || teacher.email,
+        classDate: date || new Date().toISOString().split("T")[0],
+        startTime,
+        endTime
+      });
+
+      console.log(`✅ Class notification sent to: ${student.email}`);
+    }
   } catch (error) {
     res.status(500).json({ message: "Error scheduling class", error: error.message });
   }

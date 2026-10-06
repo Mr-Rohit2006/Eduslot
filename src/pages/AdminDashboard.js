@@ -75,7 +75,7 @@ export default function AdminDashboard() {
         getAuthHeaders()
       );
 
-      showToast("University and Administrator created successfully!");
+      showToast("University created! Credentials have been sent to the Administrator's email.");
       setShowUnivModal(false);
       resetForm();
       fetchUniversities();
@@ -100,7 +100,6 @@ export default function AdminDashboard() {
     }
 
     try {
-      console.log(id)
       await axios.delete(`${API_BASE_URL}/api/university/${id}`, getAuthHeaders());
       showToast("University and all associated records deleted successfully.", "success");
       fetchUniversities();

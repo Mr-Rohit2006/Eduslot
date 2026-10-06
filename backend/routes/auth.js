@@ -31,24 +31,18 @@ router.post("/signup", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password, role } = req.body;
-    console.log(email);
-    console.log(password);
-    console.log(role);
+
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
     const query = { email: email.toLowerCase() };
-    console.log(query);
     if (role) {
       query.role = role;
     }
-    const allUsers = await User.find({});
-    console.log("TOTAL USERS:", allUsers.length);
-    const user = await User.findOne({
-      email: "rohitkumargoyal5555@gmail.com"
-    });
-    console.log(user);
+
+    const user = await User.findOne(query).populate("universityId");
+
     if (!user) {
       return res.status(400).json({ message: "Invalid email or role selection" });
     }

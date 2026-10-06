@@ -16,7 +16,7 @@ export default function UniversityHeadDashboard() {
     "Business Administration",
     "Mechanical Engineering"
   ]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -68,7 +68,7 @@ export default function UniversityHeadDashboard() {
   };
 
   const fetchData = async () => {
-    setLoading(true);
+   
     try {
       if (storedUnivId) {
         const univRes = await axios.get(`${API_BASE_URL}/api/university/${storedUnivId}`, getAuthHeaders());
@@ -103,7 +103,7 @@ export default function UniversityHeadDashboard() {
         showToast(err.response?.data?.message || "Error loading university dashboard data", "error");
       }
     } finally {
-      setLoading(false);
+     
     }
   };
 

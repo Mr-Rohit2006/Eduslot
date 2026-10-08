@@ -40,9 +40,9 @@ router.post("/login", async (req, res) => {
     if (role) {
       query.role = role;
     }
-
+    console.log(query);
     const user = await User.findOne(query).populate("universityId");
-
+    console.log(user);
     if (!user) {
       return res.status(400).json({ message: "Invalid email or role selection" });
     }

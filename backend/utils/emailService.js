@@ -5,13 +5,17 @@ const createTransporter = () => {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  
+  console.log(host);
+  console.log(pass);
+  console.log(user);
+
   if (host && user && pass) {
     return nodemailer.createTransport({
       host: host,
       port: process.env.SMTP_PORT || 587,
       secure: process.env.SMTP_SECURE === "true",
-      auth: { user, pass }
+      auth: { user, pass },
+      family: 4
     });
   }
 

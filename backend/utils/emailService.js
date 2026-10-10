@@ -1,30 +1,14 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-// Create nodemailer transporter with environment variables or console fallback
-const createTransporter = () => {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const service = process.env.SMTP_SERVICE;
-
-  if ((host || service) && user && pass) {
-    const config = {
-      auth: { user, pass }
-    };
-    
-    if (service) {
-      config.service = service;
-    } else {
-      config.host = host;
-      config.port = process.env.SMTP_PORT || 587;
-      config.secure = process.env.SMTP_SECURE === "true" || process.env.SMTP_PORT == 465;
-    }
-    
-    return nodemailer.createTransport(config);
-  }
-
-  return null;
+// Initialize Resend with API key from environment variable
+const getResend = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
 };
+
+// FROM address - must be a verified domain on Resend, or use onboarding@resend.dev for testing
+const FROM_ADDRESS = process.env.SMTP_FROM || "EduSlot Smart Class <onboarding@resend.dev>";
 
 // Send account credentials email upon account creation
 const sendAccountCredentials = async ({ email, tempPassword, name, role, universityName }) => {
@@ -43,7 +27,6 @@ const sendAccountCredentials = async ({ email, tempPassword, name, role, univers
   }
 
   const subject = `Welcome to ${universityName || "EduSlot Smart Class"} - ${roleDisplay} Credentials`;
-  const text = `Hello ${name || roleDisplay},\n\nYour ${roleDisplay.toLowerCase()} account has been created by your ${senderDisplay}.\n\nLogin Details:\nEmail: ${email}\nInitial Password: ${tempPassword}\n\nPlease log in to the portal using these credentials.\n\nBest regards,\nEduSlot Smart Class Administration`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -61,29 +44,21 @@ const sendAccountCredentials = async ({ email, tempPassword, name, role, univers
   `;
 
   try {
-    const transporter = createTransporter();
-    console.log(transporter);
-
-    if (transporter) {
-      await new Promise((resolve, reject) => {
-        transporter.sendMail({
-          from: process.env.SMTP_FROM || '"EduSlot Admin" <no-reply@eduslot.com>',
-          to: email,
-          subject,
-          text,
-          html
-        }, (err, info) => {
-          if (err) {
-            console.error(err);
-            reject(err);
-          } else {
-            resolve(info);
-          }
-        });
+    const resend = getResend();
+    if (resend) {
+      const { data, error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to: [email],
+        subject,
+        html
       });
-      console.log(`[EMAIL SENT SUCCESS] ${roleDisplay} credentials sent to ${email}`);
+      if (error) {
+        console.error(`[EMAIL ERROR] Failed to send email to ${email}:`, error);
+      } else {
+        console.log(`[EMAIL SENT SUCCESS] ${roleDisplay} credentials sent to ${email}`, data);
+      }
     } else {
-      console.log(`[EMAIL SIMULATION] (SMTP env vars not set). Credentials for ${email}: Password -> ${tempPassword}`);
+      console.log(`[EMAIL SIMULATION] (RESEND_API_KEY not set). Credentials for ${email}: Password -> ${tempPassword}`);
     }
   } catch (error) {
     console.error(`[EMAIL ERROR] Failed to send email to ${email}:`, error.message);
@@ -93,7 +68,6 @@ const sendAccountCredentials = async ({ email, tempPassword, name, role, univers
 // Send password reset token email
 const sendPasswordResetEmail = async ({ email, resetToken }) => {
   const subject = `EduSlot Smart Class - Password Reset Token`;
-  const text = `Hello,\n\nYou requested a password reset. Your 6-digit password reset token is: ${resetToken}\n\nThis token will expire in 1 hour.\n\nIf you did not request this, please ignore this email.`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -103,36 +77,32 @@ const sendPasswordResetEmail = async ({ email, resetToken }) => {
         <span style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #1d4ed8;">${resetToken}</span>
       </div>
       <p>This token will expire in 1 hour.</p>
+      <p>If you did not request this, please ignore this email.</p>
     </div>
   `;
 
   try {
-    const transporter = createTransporter();
-    if (transporter) {
-      await new Promise((resolve, reject) => {
-        transporter.sendMail({
-          from: process.env.SMTP_FROM || '"EduSlot Security" <no-reply@eduslot.com>',
-          to: email,
-          subject,
-          text,
-          html
-        }, (err, info) => {
-          if (err) {
-            console.error(err);
-            reject(err);
-          } else {
-            resolve(info);
-          }
-        });
+    const resend = getResend();
+    if (resend) {
+      const { data, error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to: [email],
+        subject,
+        html
       });
-      console.log(`[EMAIL SENT SUCCESS] Reset token sent to ${email}`);
+      if (error) {
+        console.error(`[EMAIL ERROR] Failed to send reset email to ${email}:`, error);
+      } else {
+        console.log(`[EMAIL SENT SUCCESS] Reset token sent to ${email}`, data);
+      }
     } else {
-      console.log(`[EMAIL SIMULATION] (SMTP env vars not set). Reset token for ${email}: ${resetToken}`);
+      console.log(`[EMAIL SIMULATION] (RESEND_API_KEY not set). Reset token for ${email}: ${resetToken}`);
     }
   } catch (error) {
     console.error(`[EMAIL ERROR] Failed to send reset email to ${email}:`, error.message);
   }
 };
+
 // Send class assignment notification
 const sendClassAssignmentEmail = async ({
   email,
@@ -147,157 +117,58 @@ const sendClassAssignmentEmail = async ({
   startTime,
   endTime
 }) => {
-
   const isTeacher = role === "teacher";
 
   const subject = isTeacher
     ? `New Class Assigned - ${classTitle}`
     : `New Class Scheduled - ${classTitle}`;
 
-  const text = isTeacher
-    ? `Hello ${name},
-
-You have been assigned a new class.
-
-Class Title: ${classTitle}
-Subject: ${subjectName}
-Department: ${departmentName}
-Date: ${classDate}
-Time: ${startTime} - ${endTime}
-University: ${universityName}
-
-Please check your EduSlot Teacher Portal for more details.
-
-Best regards,
-${universityName} Administration`
-    : `Hello ${name},
-
-A new class has been scheduled for your department.
-
-Class Title: ${classTitle}
-Subject: ${subjectName}
-Teacher: ${teacherName}
-Department: ${departmentName}
-Date: ${classDate}
-Time: ${startTime} - ${endTime}
-
-Please check your EduSlot Student Portal for more details.
-
-Best regards,
-${universityName} Administration`;
-
   const html = `
-    <div style="
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      color: #333;
-      max-width: 600px;
-      border: 1px solid #e0e0e0;
-      border-radius: 10px;
-    ">
-
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 10px;">
       <h2 style="color: #3b82f6;">
         ${isTeacher ? "New Class Assigned" : "New Class Scheduled"}
       </h2>
-
       <p>Hello <strong>${name}</strong>,</p>
-
-      <p>
-        ${
-          isTeacher
-            ? "You have been assigned a new class."
-            : "A new class has been scheduled for your department."
-        }
-      </p>
-
-      <div style="
-        background: #f3f4f6;
-        padding: 15px;
-        border-radius: 8px;
-        margin: 20px 0;
-      ">
-
+      <p>${isTeacher ? "You have been assigned a new class." : "A new class has been scheduled for your department."}</p>
+      <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <p><strong>Class Title:</strong> ${classTitle}</p>
         <p><strong>Subject:</strong> ${subjectName}</p>
-
-        ${
-          !isTeacher
-            ? `<p><strong>Teacher:</strong> ${teacherName}</p>`
-            : ""
-        }
-
+        ${!isTeacher ? `<p><strong>Teacher:</strong> ${teacherName}</p>` : ""}
         <p><strong>Department:</strong> ${departmentName}</p>
         <p><strong>Date:</strong> ${classDate}</p>
         <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
         <p><strong>University:</strong> ${universityName}</p>
-
       </div>
-
-      <p>
-        Please check your EduSlot ${
-          isTeacher ? "Teacher" : "Student"
-        } Portal for more details.
-      </p>
-
-      <hr style="
-        border: none;
-        border-top: 1px solid #eee;
-        margin: 20px 0;
-      " />
-
-      <small style="color: #888;">
-        This is an automated notification from EduSlot Smart Class System.
-      </small>
-
+      <p>Please check your EduSlot ${isTeacher ? "Teacher" : "Student"} Portal for more details.</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+      <small style="color: #888;">This is an automated notification from EduSlot Smart Class System.</small>
     </div>
   `;
 
   try {
-    const transporter = createTransporter();
-
-    if (transporter) {
-
-      await new Promise((resolve, reject) => {
-        transporter.sendMail({
-          from: process.env.SMTP_FROM || '"EduSlot Admin" <no-reply@eduslot.com>',
-          to: email,
-          subject,
-          text,
-          html
-        }, (err, info) => {
-          if (err) {
-            console.error(err);
-            reject(err);
-          } else {
-            resolve(info);
-          }
-        });
+    const resend = getResend();
+    if (resend) {
+      const { data, error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to: [email],
+        subject,
+        html
       });
-
-      console.log(
-        `[CLASS EMAIL SENT] ${isTeacher ? "Teacher" : "Student"} notification sent to ${email}`
-      );
-
+      if (error) {
+        console.error(`[CLASS EMAIL ERROR] Failed to send email to ${email}:`, error);
+      } else {
+        console.log(`[CLASS EMAIL SENT] ${isTeacher ? "Teacher" : "Student"} notification sent to ${email}`, data);
+      }
     } else {
-
-      console.log(
-        `[CLASS EMAIL SIMULATION] ${isTeacher ? "Teacher" : "Student"}: ${email}`
-      );
-
+      console.log(`[CLASS EMAIL SIMULATION] (RESEND_API_KEY not set). ${isTeacher ? "Teacher" : "Student"}: ${email}`);
     }
-
   } catch (error) {
-
-    console.error(
-      `[CLASS EMAIL ERROR] Failed to send email to ${email}:`,
-      error.message
-    );
-
+    console.error(`[CLASS EMAIL ERROR] Failed to send email to ${email}:`, error.message);
   }
 };
+
 module.exports = {
   sendAccountCredentials,
   sendPasswordResetEmail,
   sendClassAssignmentEmail
 };
-

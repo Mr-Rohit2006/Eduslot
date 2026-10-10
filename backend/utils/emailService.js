@@ -5,18 +5,22 @@ const createTransporter = () => {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  console.log(host);
-  console.log(pass);
-  console.log(user);
+  const service = process.env.SMTP_SERVICE;
 
-  if (host && user && pass) {
-    return nodemailer.createTransport({
-      host: host,
-      port: process.env.SMTP_PORT || 587,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: { user, pass },
-      family: 4
-    });
+  if ((host || service) && user && pass) {
+    const config = {
+      auth: { user, pass }
+    };
+    
+    if (service) {
+      config.service = service;
+    } else {
+      config.host = host;
+      config.port = process.env.SMTP_PORT || 587;
+      config.secure = process.env.SMTP_SECURE === "true" || process.env.SMTP_PORT == 465;
+    }
+    
+    return nodemailer.createTransport(config);
   }
 
   return null;
@@ -61,12 +65,21 @@ const sendAccountCredentials = async ({ email, tempPassword, name, role, univers
     console.log(transporter);
 
     if (transporter) {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"EduSlot Admin" <no-reply@eduslot.com>',
-        to: email,
-        subject,
-        text,
-        html
+      await new Promise((resolve, reject) => {
+        transporter.sendMail({
+          from: process.env.SMTP_FROM || '"EduSlot Admin" <no-reply@eduslot.com>',
+          to: email,
+          subject,
+          text,
+          html
+        }, (err, info) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            resolve(info);
+          }
+        });
       });
       console.log(`[EMAIL SENT SUCCESS] ${roleDisplay} credentials sent to ${email}`);
     } else {
@@ -96,12 +109,21 @@ const sendPasswordResetEmail = async ({ email, resetToken }) => {
   try {
     const transporter = createTransporter();
     if (transporter) {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"EduSlot Security" <no-reply@eduslot.com>',
-        to: email,
-        subject,
-        text,
-        html
+      await new Promise((resolve, reject) => {
+        transporter.sendMail({
+          from: process.env.SMTP_FROM || '"EduSlot Security" <no-reply@eduslot.com>',
+          to: email,
+          subject,
+          text,
+          html
+        }, (err, info) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            resolve(info);
+          }
+        });
       });
       console.log(`[EMAIL SENT SUCCESS] Reset token sent to ${email}`);
     } else {
@@ -235,15 +257,21 @@ ${universityName} Administration`;
 
     if (transporter) {
 
-      await transporter.sendMail({
-        from:
-          process.env.SMTP_FROM ||
-          '"EduSlot Admin" <no-reply@eduslot.com>',
-
-        to: email,
-        subject,
-        text,
-        html
+      await new Promise((resolve, reject) => {
+        transporter.sendMail({
+          from: process.env.SMTP_FROM || '"EduSlot Admin" <no-reply@eduslot.com>',
+          to: email,
+          subject,
+          text,
+          html
+        }, (err, info) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            resolve(info);
+          }
+        });
       });
 
       console.log(

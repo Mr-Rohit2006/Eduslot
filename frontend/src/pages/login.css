@@ -132,20 +132,41 @@
   color: white;
 }
 
-.token-display-box {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px dashed rgba(59, 130, 246, 0.4);
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 16px;
-  color: #93c5fd;
-  font-size: 13px;
-  text-align: center;
+
+/* Inline error alert on reset password form */
+.reset-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  color: #fca5a5;
+  font-size: 13.5px;
+  line-height: 1.4;
+  animation: alertShake 0.4s cubic-bezier(0.36,0.07,0.19,0.97);
 }
-.token-code {
-  font-size: 18px;
-  letter-spacing: 3px;
-  font-family: monospace;
-  color: #fbbf24;
+.reset-error-icon { font-size: 16px; flex-shrink: 0; }
+.reset-error-alert span:nth-child(2) { flex: 1; }
+.reset-error-close {
+  background: transparent;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color 0.2s;
+}
+.reset-error-close:hover { color: white; }
+@keyframes alertShake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
 }
 

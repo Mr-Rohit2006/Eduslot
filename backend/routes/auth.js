@@ -120,8 +120,7 @@ router.post("/forgot-password", async (req, res) => {
     });
 
     res.json({
-      message: "Password reset token generated and sent to your email address.",
-      resetToken: resetToken // Included for testing convenience
+      message: "Password reset token has been sent to your email address. Please check your inbox."
     });
   } catch (error) {
     console.error("Forgot password error:", error);

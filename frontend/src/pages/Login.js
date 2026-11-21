@@ -16,7 +16,7 @@ export default function Login() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [generatedToken, setGeneratedToken] = useState(null);
+  const [resetError, setResetError] = useState("");
 
   const navigate = useNavigate();
 
@@ -83,9 +83,8 @@ export default function Login() {
         email: resetEmail
       });
 
-      setGeneratedToken(res.data.resetToken);
-      setResetToken(res.data.resetToken || "");
-      showToast("Reset token sent to email successfully!", "success");
+      setResetToken("");
+      showToast("Reset token sent! Please check your email inbox.", "success");
       setMode("reset");
     } catch (err) {
       showToast(err.response?.data?.message || "Forgot password request failed.");
@@ -110,11 +109,12 @@ export default function Login() {
 
       showToast(res.data.message || "Password updated successfully! Please log in.", "success");
       setEmail(resetEmail);
-      setPassword(newPassword);
+      setPassword("");
+      setResetError("");
       setMode("login");
-      setGeneratedToken(null);
     } catch (err) {
-      showToast(err.response?.data?.message || "Password reset failed. Invalid or expired token.");
+      // Show inline error at the top of the reset form
+      setResetError(err.response?.data?.message || "Invalid or expired token. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -236,10 +236,12 @@ export default function Login() {
         {/* Reset Password Form */}
         {mode === "reset" && (
           <>
-            {generatedToken && (
-              <div className="token-display-box">
-                <p><strong>Reset Token:</strong> <span className="token-code">{generatedToken}</span></p>
-                <small>(Sent to email address)</small>
+            {/* Inline error alert for wrong/expired token */}
+            {resetError && (
+              <div className="reset-error-alert">
+                <span className="reset-error-icon">⚠️</span>
+                <span>{resetError}</span>
+                <button className="reset-error-close" onClick={() => setResetError("")} aria-label="Dismiss">✕</button>
               </div>
             )}
 
@@ -257,9 +259,13 @@ export default function Login() {
               <label>6-Digit Reset Token</label>
               <input
                 type="text"
-                placeholder="e.g. 123456"
+                placeholder="Enter token from your email"
                 value={resetToken}
-                onChange={(e) => setResetToken(e.target.value)}
+                onChange={(e) => {
+                  setResetToken(e.target.value);
+                  if (resetError) setResetError(""); // clear error on typing
+                }}
+                maxLength={6}
                 className="login-input"
               />
             </div>

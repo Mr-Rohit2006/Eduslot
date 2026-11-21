@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 
 const User = require("./models/User");
 const University = require("./models/University");
+const { verifyEmailService } = require("./utils/emailService");
 require("dotenv").config();
 const app = express();
 
@@ -104,9 +105,10 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/eduslo
 
 mongoose
   .connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log("MongoDB Connected to:", MONGODB_URI);
-    seedInitialData();
+    await seedInitialData();
+    await verifyEmailService(); // verify SMTP on startup
   })
   .catch((err) => console.error("MongoDB Connection Error:", err));
 

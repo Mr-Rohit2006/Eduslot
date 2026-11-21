@@ -3,12 +3,14 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 
+require("dotenv").config();
+
 const User = require("./models/User");
 const University = require("./models/University");
-const { verifyEmailService } = require("./utils/emailService");
-require("dotenv").config();
+
 const app = express();
 
+// ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: [
     "http://localhost:3000",
@@ -21,22 +23,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// API Routes
-app.use("/api/auth", require("./routes/auth"));
+// ─── API Routes ───────────────────────────────────────────────────────────────
+app.use("/api/auth",       require("./routes/auth"));
 app.use("/api/university", require("./routes/university"));
-app.use("/api/teachers", require("./routes/teacherManagement"));
-app.use("/api/students", require("./routes/studentManagement"));
-app.use("/api/classes", require("./routes/classRoutes"));
-app.use("/api/seat", require("./routes/seat"));
+app.use("/api/teachers",   require("./routes/teacherManagement"));
+app.use("/api/students",   require("./routes/studentManagement"));
+app.use("/api/classes",    require("./routes/classRoutes"));
+app.use("/api/seat",       require("./routes/seat"));
 
 app.get("/", (req, res) => {
-  res.send("EduSlot Smart Class API Running");
+  res.send("EduSlot Smart Class API Running ✅");
 });
 
-// Seed default data if database is empty
+// ─── Seed default data ────────────────────────────────────────────────────────
 const seedInitialData = async () => {
   try {
-    // 1. Create default University if not present
     let defaultUniv = await University.findOne({ code: "STANFORD" });
     if (!defaultUniv) {
       defaultUniv = await University.create({
@@ -48,7 +49,6 @@ const seedInitialData = async () => {
       console.log("Seed: Created default Stanford University");
     }
 
-    // 2. Create default Super Admin
     const adminExists = await User.findOne({ email: "admin@eduslot.com" });
     if (!adminExists) {
       const hashedAdminPassword = await bcrypt.hash("admin123", 10);
@@ -63,7 +63,6 @@ const seedInitialData = async () => {
       console.log("Seed: Created Super Admin (admin@eduslot.com / admin123)");
     }
 
-    // 3. Create default University Administrator
     const headExists = await User.findOne({ email: "head@stanford.edu" });
     if (!headExists) {
       const hashedHeadPassword = await bcrypt.hash("head123", 10);
@@ -80,7 +79,6 @@ const seedInitialData = async () => {
       console.log("Seed: Created University Administrator (head@stanford.edu / head123)");
     }
 
-    // 4. Create default Teacher
     const teacherExists = await User.findOne({ email: "teacher@stanford.edu" });
     if (!teacherExists) {
       const hashedTeacherPassword = await bcrypt.hash("teacher123", 10);
@@ -101,19 +99,41 @@ const seedInitialData = async () => {
   }
 };
 
+// ─── MongoDB connection ───────────────────────────────────────────────────────
+// Vercel serverless: mongoose caches the connection across warm invocations.
+// A new connection is only opened when the function is cold-started.
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/eduslot";
 
-mongoose
-  .connect(MONGODB_URI)
-  .then(async () => {
-    console.log("MongoDB Connected to:", MONGODB_URI);
-    await seedInitialData();
-    await verifyEmailService(); // verify SMTP on startup
-  })
-  .catch((err) => console.error("MongoDB Connection Error:", err));
+let isConnected = false;
 
-const PORT = process.env.PORT || 5000;
+const connectDB = async () => {
+  if (isConnected) return; // reuse existing connection on warm invocations
+  await mongoose.connect(MONGODB_URI);
+  isConnected = true;
+  console.log("MongoDB Connected");
+  await seedInitialData();
+};
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Connect before handling any request (works for both Render & Vercel)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("MongoDB connection failed:", err.message);
+    res.status(500).json({ message: "Database connection error" });
+  }
 });
+
+// ─── Start server (only when running directly, not on Vercel) ─────────────────
+// Vercel imports this file as a module — it must NOT call app.listen().
+// Render / local dev runs `node server.js` directly, so listen is needed there.
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// ─── Export for Vercel serverless ─────────────────────────────────────────────
+module.exports = app;

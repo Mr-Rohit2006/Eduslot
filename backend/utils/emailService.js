@@ -1,70 +1,58 @@
 /**
  * emailService.js — EduSlot Smart Class
  * ─────────────────────────────────────────────────────────────────────────────
- * Render-ready SMTP email service using nodemailer + Gmail App Password.
+ * Works on BOTH Render (always-on) AND Vercel (serverless).
  *
- * Required environment variables (set in Render Dashboard → Environment):
- *   SMTP_HOST   = smtp.gmail.com
- *   SMTP_PORT   = 465
- *   SMTP_USER   = your-gmail@gmail.com
- *   SMTP_PASS   = your16charapppassword   ← NO SPACES (see note below)
- *   SMTP_FROM   = EduSlot Admin <your-gmail@gmail.com>
+ * Key design for serverless compatibility:
+ *  • No singleton transporter — each call builds a fresh one (Vercel functions
+ *    are stateless; persistent module-level state is unreliable).
+ *  • No connection pooling — pools don't survive between serverless invocations.
+ *  • No startup verify — Vercel has no "startup" hook; verification runs inline.
+ *  • Graceful fallback — if SMTP vars are missing, emails are console-logged
+ *    so the app never crashes in dev or when env vars aren't set yet.
  *
- * Gmail App Password note:
- *   Google shows it as "xxxx xxxx xxxx xxxx" — remove all spaces before saving.
- *   Enable 2-Step Verification first, then generate at:
- *   https://myaccount.google.com/apppasswords
+ * Required env vars (set in Vercel Dashboard → Project → Settings → Environment):
+ *   SMTP_HOST  = smtp.gmail.com
+ *   SMTP_PORT  = 465
+ *   SMTP_USER  = your-gmail@gmail.com
+ *   SMTP_PASS  = your16charapppassword   ← NO spaces
+ *   SMTP_FROM  = EduSlot Admin <your-gmail@gmail.com>
+ *
+ * Gmail App Password:
+ *   Google shows "xxxx xxxx xxxx xxxx" — paste WITHOUT spaces.
+ *   Generate at: https://myaccount.google.com/apppasswords
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 const nodemailer = require("nodemailer");
 
-// ─── Singleton transporter ────────────────────────────────────────────────────
-// Built once at startup; reused for every email (efficient + Render-friendly).
-let _transporter = null;
-
-const getTransporter = () => {
-  // Return cached instance if already built
-  if (_transporter) return _transporter;
-
+// ─── Build a fresh transporter on every call ─────────────────────────────────
+// Vercel serverless functions are stateless — singletons can't be relied on.
+// A new transporter per call is cheap for nodemailer and always works.
+const createTransporter = () => {
   const user = process.env.SMTP_USER;
-  // Strip any accidental spaces from the App Password
+  // Strip any accidental spaces from the App Password (safety net)
   const pass = (process.env.SMTP_PASS || "").replace(/\s+/g, "");
 
-  if (!user || !pass) {
-    console.warn(
-      "[EMAIL] SMTP_USER or SMTP_PASS not set — running in simulation mode (emails will only be logged)."
-    );
-    return null;
-  }
+  if (!user || !pass) return null;
 
   const port = parseInt(process.env.SMTP_PORT, 10) || 465;
-  // port 465 → SSL (secure:true), port 587 → STARTTLS (secure:false)
-  const secure = port === 465;
+  const secure = port === 465; // 465 → SSL true, 587 → STARTTLS false
 
-  _transporter = nodemailer.createTransport({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port,
     secure,
     auth: { user, pass },
-    // ── TLS options ──────────────────────────────────────────────────────────
-    // Render runs in a containerised environment; these settings prevent
-    // "self-signed certificate" / "socket hang up" errors on some hosts.
     tls: {
-      rejectUnauthorized: true, // keep true for Gmail (trusted CA)
+      rejectUnauthorized: true, // Gmail uses a trusted CA — keep true
       minVersion: "TLSv1.2",
     },
-    // ── Connection pool ───────────────────────────────────────────────────────
-    pool: true,          // reuse connections instead of opening a new one per email
-    maxConnections: 3,
-    maxMessages: 50,
-    // ── Timeouts (ms) ─────────────────────────────────────────────────────────
-    connectionTimeout: 10000, // 10 s — Render cold-start can be slow
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    // No pool:true — pooling is pointless in serverless (function dies after response)
+    connectionTimeout: 10000, // 10 s
+    greetingTimeout:   10000,
+    socketTimeout:     15000,
   });
-
-  return _transporter;
 };
 
 // ─── FROM address ─────────────────────────────────────────────────────────────
@@ -72,39 +60,14 @@ const getFromAddress = () =>
   process.env.SMTP_FROM ||
   `EduSlot Admin <${process.env.SMTP_USER || "no-reply@eduslot.com"}>`;
 
-// ─── SMTP verify (call once at server startup) ────────────────────────────────
-/**
- * Call this from server.js after connecting to MongoDB.
- * Logs success/failure without crashing the server.
- */
-const verifyEmailService = async () => {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.log("[EMAIL] Skipping SMTP verification — simulation mode active.");
-    return;
-  }
-  try {
-    await transporter.verify();
-    console.log("[EMAIL] ✅ SMTP connection verified — ready to send emails.");
-  } catch (err) {
-    console.error(
-      "[EMAIL] ❌ SMTP verification failed:",
-      err.message,
-      "\n       → Check SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in your Render environment."
-    );
-    // Reset so next email attempt tries to reconnect
-    _transporter = null;
-  }
-};
-
-// ─── Internal helper ──────────────────────────────────────────────────────────
+// ─── Internal send helper ─────────────────────────────────────────────────────
 const sendMail = async ({ to, subject, html, label }) => {
-  const transporter = getTransporter();
+  const transporter = createTransporter();
 
   if (!transporter) {
-    // Dev / simulation fallback — just log
+    // Simulation mode — SMTP vars not configured yet
     console.log(`[EMAIL SIMULATION] [${label}] Would send to: ${to}`);
-    console.log(`  Subject : ${subject}`);
+    console.log(`  Subject: ${subject}`);
     return;
   }
 
@@ -118,16 +81,12 @@ const sendMail = async ({ to, subject, html, label }) => {
     console.log(`[EMAIL SENT] [${label}] → ${to} | id: ${info.messageId}`);
   } catch (err) {
     console.error(`[EMAIL ERROR] [${label}] Failed for ${to}:`, err.message);
-    // If the connection dropped, clear the singleton so it rebuilds next time
-    if (err.code === "ECONNRESET" || err.code === "ETIMEDOUT") {
-      _transporter = null;
-    }
-    // Do NOT rethrow — email failures should never crash the main request
+    // Do NOT rethrow — email failures must never crash the API response
   }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Account credentials (sent when admin/uni-head creates an account)
+// 1. Account credentials (sent when admin creates a student/teacher account)
 // ─────────────────────────────────────────────────────────────────────────────
 const sendAccountCredentials = async ({
   email,
@@ -194,8 +153,8 @@ const sendPasswordResetEmail = async ({ email, resetToken }) => {
         <p>Use the 6-digit token below on the Reset Password page:</p>
         <div style="background:#eff6ff;border:1px dashed #3b82f6;padding:20px;
                     border-radius:10px;text-align:center;margin:24px 0;">
-          <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1d4ed8;
-                       font-family:monospace;">
+          <span style="font-size:32px;font-weight:bold;letter-spacing:8px;
+                       color:#1d4ed8;font-family:monospace;">
             ${resetToken}
           </span>
         </div>
@@ -263,7 +222,6 @@ const sendClassAssignmentEmail = async ({
 
 // ─────────────────────────────────────────────────────────────────────────────
 module.exports = {
-  verifyEmailService,       // call once from server.js at startup
   sendAccountCredentials,
   sendPasswordResetEmail,
   sendClassAssignmentEmail,

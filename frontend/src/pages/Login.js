@@ -79,7 +79,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
+      await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
         email: resetEmail
       });
 

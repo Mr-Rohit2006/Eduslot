@@ -102,16 +102,27 @@ const seedInitialData = async () => {
 // ─── MongoDB connection ───────────────────────────────────────────────────────
 // Vercel serverless: mongoose caches the connection across warm invocations.
 // A new connection is only opened when the function is cold-started.
+// console.log(process.env.MONGODB_URI);
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/eduslot";
 
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) return; // reuse existing connection on warm invocations
-  await mongoose.connect(MONGODB_URI);
-  isConnected = true;
-  console.log("MongoDB Connected");
-  await seedInitialData();
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000
+    });
+
+    isConnected = true;
+    console.log("MongoDB Connected Successfully");
+
+    await seedInitialData();
+
+  } catch (err) {
+    isConnected = false;
+    console.error("MongoDB connection failed:", err);
+    throw err;
+  }
 };
 
 // Connect before handling any request (works for both Render & Vercel)
@@ -130,10 +141,26 @@ app.use(async (req, res, next) => {
 // Render / local dev runs `node server.js` directly, so listen is needed there.
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+
+  const startServer = async () => {
+    try {
+      console.log("Starting MongoDB connection...");
+
+      await connectDB();
+
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+
+    } catch (error) {
+      console.error("Startup failed:", error.message);
+      process.exit(1);
+    }
+  };
+
+  startServer();
 }
 
-// ─── Export for Vercel serverless ─────────────────────────────────────────────
 module.exports = app;
+
+// ─── Export for Vercel serverless ─────────────────────────────────────────────

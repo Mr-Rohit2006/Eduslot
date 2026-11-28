@@ -31,12 +31,14 @@ router.post("/signup", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password, role } = req.body;
-
+    
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
-
     const query = { email: email.toLowerCase() };
+    if(!role){
+      return res.status(400).json({ message: "role are required" });
+    }
     if (role) {
       query.role = role;
     }

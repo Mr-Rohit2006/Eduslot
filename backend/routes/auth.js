@@ -31,17 +31,17 @@ router.post("/signup", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password, role } = req.body;
-    
+    console.log(role);
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
     const query = { email: email.toLowerCase() };
-    if(!role){
-      return res.status(400).json({ message: "role are required" });
-    }
-    if (role) {
-      query.role = role;
-    }
+    // if(!role){
+    //   return res.status(400).json({ message: "role are required" });
+    // }
+    // if (role) {
+    //   query.role = role;
+    // }
     console.log(query);
     const user = await User.findOne(query).populate("universityId");
     console.log(user);
